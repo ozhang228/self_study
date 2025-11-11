@@ -1,3 +1,4 @@
+import argparse
 import base64
 import socket as sock
 import ssl
@@ -5,6 +6,7 @@ from types import TracebackType
 from typing import Type
 
 from google_auth_oauthlib.flow import InstalledAppFlow
+from pydantic import BaseModel
 
 MSG = "\r\n I love computer networks!"
 END_MSG = "\r\n.\r\n"
@@ -14,6 +16,15 @@ MAIL_SERVER_HOSTNAME = "smtp.gmail.com"
 MAIL_SERVER_PORT = 465
 
 
+def print_log(msg: str) -> None:
+    """
+    Emulates a logging statement
+    """
+
+    print(f"[Log]: {msg}")
+
+
+# TODO: make socket an object that can be stubbed in order to test
 class SMTPClient:
     def __init__(
         self, ssl_context: ssl.SSLContext, server_hostname: str, server_port: int
@@ -30,6 +41,7 @@ class SMTPClient:
         self.ssock = self.ssl_context.wrap_socket(
             sock=self.sock, server_hostname=self.server_hostname
         )
+        self.ssock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
         self.ssock.connect((self.server_hostname, self.server_port))
         recv = self.ssock.recv(1024).decode()
 
@@ -46,6 +58,11 @@ class SMTPClient:
         exc_value: BaseException | None,
         traceback: TracebackType,
     ) -> bool:
+        quit_msg = "QUIT\r\n"
+        print(f"Client: {quit_msg}")
+        self.get_ssock().send(quit_msg.encode())
+        print(f"Server: {self.get_ssock().recv(1024)}")
+
         self.get_sock().close()
         self.get_ssock().close()
 
@@ -63,39 +80,98 @@ class SMTPClient:
 
         return self.ssock
 
-    def auth_login(self, email: str, token: str) -> None:
-        SCOPES = ["https://mail.gmail.com/"]
+    def auth_login(self, email: str) -> bool:
+        SCOPES = ["https://mail.google.com/"]
         flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", SCOPES)
-        creds = flow.run_local_server(port=0)
-        print(creds.token)
+        creds = flow.run_local_server()
 
-        # self.get_ssock().send((base64.b64encode("AUTH XOAUTH2 1".encode()) + b"\r\n"))
-        # print(self.get_ssock().recv(1024).decode())
+        self.get_ssock().send(
+            b"AUTH XOAUTH2 "
+            + base64.b64encode(
+                f"user={email}\x01auth=Bearer {creds.token}\x01\x01".encode()
+            )
+            + b"\r\n"
+        )
+        auth_res = self.get_ssock().recv(1024).decode()
 
-        pass
+        if auth_res[:3] != "235":
+            print("OAUTH failed " + auth_res)
+            return False
+        else:
+            print(f"Successfully authenticated as {email}")
+            return True
 
-    def start_session(self) -> str:
+    def start_session(self) -> bool:
         helo_cmd = "HELO Alice\r\n"
         self.get_ssock().send(helo_cmd.encode())
 
         helo_res = self.get_ssock().recv(1024).decode()
 
-        print(helo_res)
         if helo_res[:3] != "250":
-            raise Exception("250 reply not received from server.")
+            print("250 reply not received from server.")
+            return False
 
-        self.auth_login("hi", "hi")
+        return True
 
-        return helo_res
+    def send_email(self, from_email: str, to_email: str, msg: str) -> bool:
+        if not self.auth_login(from_email):
+            return False
 
-    def send_email(self, from_email: str, to_email: str) -> str:
-        # self.get_ssock().send(f"MAIL FROM:{from_email}\r\n".encode())
-        # print(self.get_ssock().recv(1024))
+        mail_from_msg = f"MAIL FROM:<{from_email}>\r\n".encode()
+        print(f"Client: {mail_from_msg}")
+        self.get_ssock().send(mail_from_msg)
+        mail_from_res = self.get_ssock().recv(1024)
 
-        return ""
+        if mail_from_res[:3] != b"250":
+            print(f"MAIL FROM failed with response {mail_from_res}")
+            return False
+        print(f"Server: {mail_from_res}")
+
+        rept_to_msg = f"RCPT TO:<{to_email}>\r\n".encode()
+        print(f"Client: {rept_to_msg}")
+        self.get_ssock().send(rept_to_msg)
+        rept_to_res = self.get_ssock().recv(1024)
+
+        if rept_to_res[:3] != b"250":
+            print(f"RCPT TO failed with response {rept_to_res}")
+            return False
+        print(f"Server: {rept_to_res}")
+
+        data_msg = "DATA\r\n".encode()
+        print(f"Client: {data_msg}")
+        self.get_ssock().send(data_msg)
+        data_res = self.get_ssock().recv(1024)
+
+        if data_res[:3] != b"354":
+            print(f"DATA failed with response {data_res}")
+            return False
+        print(f"Server: {data_res}")
+
+        msg_data = f"{msg}\r\n.\r\n".encode()
+        print(f"Client: {msg_data}")
+        self.get_ssock().send(msg_data)
+        msg_res = self.get_ssock().recv(1024)
+
+        if msg_res[:3] != b"250":
+            print(f"Sending message data failed with response {msg_res}")
+        print(f"Server: {msg_res}")
+
+        return True
+
+
+class Arguments(BaseModel):
+    src: str
+    dst: str
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--src", type=str)
+    parser.add_argument("-d", "--dst", type=str)
+    namespace = parser.parse_args()
+
+    args = Arguments(src=namespace.src, dst=namespace.dst)
+
     # Create socket called clientSocket and establish a TCP connection with mailserver
     ssl_context = ssl.create_default_context()
     with SMTPClient(
@@ -103,30 +179,13 @@ def main():
         server_hostname=MAIL_SERVER_HOSTNAME,
         server_port=MAIL_SERVER_PORT,
     ) as smtp_client:
-        smtp_client.send_email(
-            from_email="tracyyguo15@gmail.com", to_email="oscarzhang228@gmail.com"
-        )
-        pass
+        while True:
+            msg = input("Enter a message or ':Exit' in order to quit:\n")
 
-    # Send MAIL FROM command and print server response.
-    # Fill in start
-    # Fill in end
-    # Send RCPT TO command and print server response.
-    # Fill in start
-    # Fill in end
-    # Send DATA command and print server response.
-    # Fill in start
-    # Fill in end
-    # Send message data.
-    # Fill in start
-    # Fill in end
-    # Message ends with a single period.
-    # Fill in start
-    # Fill in end
-    # Send QUIT command and get server response.
-    # Fill in start
-    # Fill in end
-    pass
+            if msg == ":Exit":
+                break
+
+            smtp_client.send_email(from_email=args.src, to_email=args.dst, msg=msg)
 
 
 if __name__ == "__main__":
