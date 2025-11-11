@@ -8,10 +8,6 @@ from typing import Type
 from google_auth_oauthlib.flow import InstalledAppFlow
 from pydantic import BaseModel
 
-MSG = "\r\n I love computer networks!"
-END_MSG = "\r\n.\r\n"
-
-
 MAIL_SERVER_HOSTNAME = "smtp.gmail.com"
 MAIL_SERVER_PORT = 465
 
