@@ -55,9 +55,9 @@ class SMTPClient:
         traceback: TracebackType,
     ) -> bool:
         quit_msg = "QUIT\r\n"
-        print(f"Client: {quit_msg}")
+        print_log(f"Client: {quit_msg}")
         self.get_ssock().send(quit_msg.encode())
-        print(f"Server: {self.get_ssock().recv(1024)}")
+        print_log(f"Server: {self.get_ssock().recv(1024)}")
 
         self.get_sock().close()
         self.get_ssock().close()
@@ -91,10 +91,10 @@ class SMTPClient:
         auth_res = self.get_ssock().recv(1024).decode()
 
         if auth_res[:3] != "235":
-            print("OAUTH failed " + auth_res)
+            print_log("OAUTH failed " + auth_res)
             return False
         else:
-            print(f"Successfully authenticated as {email}")
+            print_log(f"Successfully authenticated as {email}")
             return True
 
     def start_session(self) -> bool:
@@ -104,7 +104,7 @@ class SMTPClient:
         helo_res = self.get_ssock().recv(1024).decode()
 
         if helo_res[:3] != "250":
-            print("250 reply not received from server.")
+            print_log("250 reply not received from server.")
             return False
 
         return True
@@ -114,43 +114,43 @@ class SMTPClient:
             return False
 
         mail_from_msg = f"MAIL FROM:<{from_email}>\r\n".encode()
-        print(f"Client: {mail_from_msg}")
+        print_log(f"Client: {mail_from_msg}")
         self.get_ssock().send(mail_from_msg)
         mail_from_res = self.get_ssock().recv(1024)
 
         if mail_from_res[:3] != b"250":
-            print(f"MAIL FROM failed with response {mail_from_res}")
+            print_log(f"MAIL FROM failed with response {mail_from_res}")
             return False
-        print(f"Server: {mail_from_res}")
+        print_log(f"Server: {mail_from_res}")
 
         rept_to_msg = f"RCPT TO:<{to_email}>\r\n".encode()
-        print(f"Client: {rept_to_msg}")
+        print_log(f"Client: {rept_to_msg}")
         self.get_ssock().send(rept_to_msg)
         rept_to_res = self.get_ssock().recv(1024)
 
         if rept_to_res[:3] != b"250":
-            print(f"RCPT TO failed with response {rept_to_res}")
+            print_log(f"RCPT TO failed with response {rept_to_res}")
             return False
-        print(f"Server: {rept_to_res}")
+        print_log(f"Server: {rept_to_res}")
 
         data_msg = "DATA\r\n".encode()
-        print(f"Client: {data_msg}")
+        print_log(f"Client: {data_msg}")
         self.get_ssock().send(data_msg)
         data_res = self.get_ssock().recv(1024)
 
         if data_res[:3] != b"354":
-            print(f"DATA failed with response {data_res}")
+            print_log(f"DATA failed with response {data_res}")
             return False
-        print(f"Server: {data_res}")
+        print_log(f"Server: {data_res}")
 
         msg_data = f"{msg}\r\n.\r\n".encode()
-        print(f"Client: {msg_data}")
+        print_log(f"Client: {msg_data}")
         self.get_ssock().send(msg_data)
         msg_res = self.get_ssock().recv(1024)
 
         if msg_res[:3] != b"250":
-            print(f"Sending message data failed with response {msg_res}")
-        print(f"Server: {msg_res}")
+            print_log(f"Sending message data failed with response {msg_res}")
+        print_log(f"Server: {msg_res}")
 
         return True
 
