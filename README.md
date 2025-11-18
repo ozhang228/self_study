@@ -2,10 +2,9 @@
 
 A repository to hold exericses for books and courses I'm working through or have worked through.
 
-## Current
+## Article Recommendations
 
-- **Computer Networking: A Top Down Approach**
-- **OS: Three Easy Pieces**
-- **learncpp.com**
+[You Might Not Need An Effect](https://react.dev/learn/you-might-not-need-an-effect) - must read for any React programmer
+[React as a runtime](https://overreacted.io/react-as-a-ui-runtime/) - good details on reconciliation and how React works as a runtime
 
-## Completed
+## Book Recommendations
