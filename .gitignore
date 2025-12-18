@@ -1,2 +1,8 @@
 .env
 client_secret.json
+ostep/projects/processes-shell/CMakeFiles
+ostep/projects/processes-shell/build
+ostep/projects/processes-shell/tests-out
+ostep/projects/processes-shell/CMakeCache.txt
+ostep/projects/processes-shell/Makefile
+ostep/projects/processes-shell/wish
