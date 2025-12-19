@@ -4,58 +4,15 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-// TODO: Write tests
-// Interactive mode: empty command, all builtins, whitespace, redirection, path
-
-std::vector<std::string> tokenize_line(const std::string& cmd) {
-  std::vector<std::string> tokens{};
-  std::stringstream ss(cmd);
-  std::string item{};
-
-  while (ss >> item) {
-    tokens.push_back(item);
-  }
-
-  return tokens;
-}
-
-void print_arg_count_err(const std::string& cmd, size_t expected, size_t got) {
-  std::cout << "Error: " << cmd << " expected " << expected
-            << " argument(s), but got " << got << " argument(s)" << std::endl;
-}
-
+std::vector<std::string> tokenize_line(const std::string& cmd);
+void print_arg_count_err(const std::string& cmd, size_t expected, size_t got);
 bool try_handle_builtin(const std::vector<std::string>& tokens,
-                        std::vector<std::string>& path) {
-  if (tokens[0] == "exit") {
-    if (tokens.size() != 1) {
-      print_arg_count_err("exit", 0, tokens.size() - 1);
-      std::exit(EXIT_FAILURE);
-    } else {
-      std::exit(EXIT_SUCCESS);
-    }
-  } else if (tokens[0] == "cd") {
-    if (tokens.size() != 2) {
-      print_arg_count_err("cd", 1, tokens.size() - 1);
-      return true;
-    }
-
-    int rc = chdir(tokens[1].c_str());
-
-    if (rc == -1) {
-      std::cout << "Error: failed to change directory to '" << tokens[1] << "'"
-                << std::endl;
-      return true;
-    }
-  } else if (tokens[0] == "path") {
-    path.assign(tokens.begin() + 1, tokens.end());
-  }
-
-  return false;
-}
+                        std::vector<std::string>& path);
+void execute_command(const std::vector<std::string>& tokens,
+                     const std::vector<std::string>& path);
 
 int main(int argc, char* argv[]) {
   std::vector<std::string> path{"/bin"};
@@ -91,6 +48,8 @@ int main(int argc, char* argv[]) {
 
       if (try_handle_builtin(parts, path)) {
         continue;
+      } else {
+        execute_command(parts, path);
       }
     }
   } else {
