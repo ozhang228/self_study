@@ -1,0 +1,4 @@
+(lang dune 3.21)
+(name ocaml_exercises)
+(sections (lib .) (bin ../../bin))
+(files (lib (META dune-package opam)) (bin (ocaml_exercises)))

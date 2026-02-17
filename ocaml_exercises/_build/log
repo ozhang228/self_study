@@ -1,0 +1,16 @@
+# dune exec ocaml_exercises
+# OCAMLPARAM: unset
+# Shared cache: enabled-except-user-rules
+# Shared cache location: /home/ozhang/.cache/dune/db
+# Workspace root: /home/ozhang/dev/books_courses_exercises/ocaml_exercises
+# Auto-detected concurrency: 16
+# Dune context:
+#  { name = "default"
+#  ; kind = "default"
+#  ; profile = Dev
+#  ; merlin = true
+#  ; fdo_target_exe = None
+#  ; build_dir = In_build_dir "default"
+#  ; instrument_with = []
+#  }
+$ /home/ozhang/.opam/5.4.0/bin/ocamlc.opt -config > /tmp/dune_be84a6_output
