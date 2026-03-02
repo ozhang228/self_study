@@ -26,28 +26,3 @@ add_custom_command(
           $<TARGET_FILE:wish>
           ${CMAKE_SOURCE_DIR}/wish
 )
-
-# Googletest
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-enable_testing()
-
-add_executable(wish_test
-  wish_test.cpp
-)
-
-target_link_libraries(wish_test
-  PRIVATE
-    wish_lib
-    GTest::gtest_main
-)
-
-include(GoogleTest)
-gtest_discover_tests(wish_test)

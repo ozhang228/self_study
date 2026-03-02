@@ -8,7 +8,7 @@
 #include <vector>
 
 std::vector<std::string> tokenize_line(const std::string& cmd);
-void print_arg_count_err(const std::string& cmd, size_t expected, size_t got);
+void print_error();
 bool try_handle_builtin(const std::vector<std::string>& tokens,
                         std::vector<std::string>& path);
 void execute_command(const std::vector<std::string>& tokens,
@@ -24,8 +24,7 @@ int main(int argc, char* argv[]) {
     std::ifstream cmd_file(argv[1]);
 
     if (!cmd_file.is_open()) {
-      std::cout << "Error: File '" << argv[1] << "' failed to open"
-                << std::endl;
+      print_error();
       std::exit(EXIT_FAILURE);
     }
 
@@ -53,8 +52,9 @@ int main(int argc, char* argv[]) {
       }
     }
   } else {
-    return EXIT_FAILURE;
+    print_error();
+    std::exit(EXIT_FAILURE);
   }
 
-  return EXIT_SUCCESS;
+  std::exit(EXIT_SUCCESS);
 }

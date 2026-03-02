@@ -2,48 +2,62 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+void print_error() { std::cerr << "An error had occurred" << std::endl; }
 std::vector<std::string> tokenize_line(const std::string& cmd) {
   std::vector<std::string> tokens{};
   std::stringstream ss(cmd);
   std::string item{};
 
   while (ss >> item) {
-    tokens.push_back(item);
+    size_t gt_pos{item.find(">")};
+    if (gt_pos == item.npos) {
+      tokens.push_back(item);
+      continue;
+    }
+
+    if (gt_pos == 0) {
+      tokens.push_back(">");
+      tokens.push_back(item.substr(1));
+    } else if (gt_pos == item.size() - 1) {
+      tokens.push_back(item.substr(0, item.size() - 1));
+      tokens.push_back(">");
+    } else {
+      print_error();
+      std::exit(EXIT_FAILURE);
+    }
   }
 
   return tokens;
 }
 
-void print_arg_count_err(const std::string& cmd, size_t expected, size_t got) {
-  std::cout << "Error: " << cmd << " expected " << expected
-            << " argument(s), but got " << got << " argument(s)" << std::endl;
-}
+[[nodiscard]] bool try_handle_builtin(const std::vector<std::string>& tokens,
+                                      std::vector<std::string>& path) {
+  if (tokens.empty()) return true;
 
-bool try_handle_builtin(const std::vector<std::string>& tokens,
-                        std::vector<std::string>& path) {
   if (tokens[0] == "exit") {
     if (tokens.size() != 1) {
-      print_arg_count_err("exit", 0, tokens.size() - 1);
+      print_error();
       std::exit(EXIT_FAILURE);
     } else {
       std::exit(EXIT_SUCCESS);
     }
   } else if (tokens[0] == "cd") {
     if (tokens.size() != 2) {
-      print_arg_count_err("cd", 1, tokens.size() - 1);
+      print_error();
       return true;
     }
 
     int rc = chdir(tokens[1].c_str());
 
     if (rc == -1) {
-      std::cout << "Error: failed to change directory to '" << tokens[1] << "'"
-                << std::endl;
+      print_error();
     }
 
     return true;
@@ -68,7 +82,7 @@ void execute_command(const std::vector<std::string>& tokens,
   }
 
   if (cmd_path.empty()) {
-    std::cout << "Error: could not find the command in path" << std::endl;
+    print_error();
     return;
   }
 
@@ -78,7 +92,7 @@ void execute_command(const std::vector<std::string>& tokens,
   bool had_error = rc == -1;
 
   if (had_error) {
-    std::cout << "Error: fork failed" << std::endl;
+    print_error();
     return;
   } else if (is_child) {
     std::vector<char*> argv;
@@ -86,12 +100,15 @@ void execute_command(const std::vector<std::string>& tokens,
 
     argv.push_back(const_cast<char*>(cmd_path.c_str()));
 
-    for (size_t i{1}; i < tokens.size(); ++i) {
+    for (size_t i = 1; i < tokens.size(); ++i) {
       argv.push_back(const_cast<char*>(tokens[i].c_str()));
     }
 
     argv.push_back(nullptr);
+
     execv(cmd_path.c_str(), argv.data());
+    print_error();
+    std::exit(EXIT_FAILURE);
   } else {
     waitpid(rc, NULL, 0);
   }
